@@ -6,11 +6,28 @@
 //
 
 import SwiftUI
+import Firebase
+
+// fix SwiftUI preivew crash from reinitializing Auth
+class FirebaseManager: NSObject {
+    
+    static let shared = FirebaseManager()
+    var auth: Auth
+    
+    override init() {
+        FirebaseApp.configure()
+        
+        auth = Auth.auth()
+        super.init()
+    }
+    
+}
 
 struct LoginView: View {
     @State var isLoginMode = false
     @State var email = ""
     @State var password = ""
+    @State var loginStatusMessage = ""
     
     var body: some View {
         NavigationView {
@@ -55,20 +72,49 @@ struct LoginView: View {
                         }
                         .background(Color.blue)
                     }
+                    
+                    Text(loginStatusMessage)
+                        .foregroundColor(.red)
                 }
                 .padding()
             }
             .navigationTitle(isLoginMode ? "Log In" : "Create Account")
             .background(Color(.init(white: 0, alpha: 0.05)))
         }
+        .navigationViewStyle(StackNavigationViewStyle())
         
     }
     
+    private func createAccount() {
+        FirebaseManager.shared.auth.createUser(withEmail: email, password: password) { result, err in
+            if let err = err {
+                print("Failed to create account with error \(err)")
+                loginStatusMessage = "Failed to create account with error \(err)"
+                return
+            }
+            
+            print("User created successfully \(result?.user.uid ?? "nada")")
+            loginStatusMessage = "User created successfully \(result?.user.uid ?? "nada")"
+        }
+    }
+    
+    private func loginUser() {
+        FirebaseManager.shared.auth.signIn(withEmail: email, password: password) { result, err in
+            if let err = err {
+                print("Failed to login with error \(err)")
+                loginStatusMessage = "Failed to login with error \(err)"
+                return
+            }
+            
+            print("User Logged in successfully \(result?.user.uid ?? "nada")")
+            loginStatusMessage = "User Logged in successfully \(result?.user.uid ?? "nada")"
+        }
+    }
     private func handleAction() {
         if isLoginMode {
-            print("Should login with existing Firebase auth stuff")
+            loginUser()
         } else {
-            print("Create a new account and figure out how to store the image in Firebase")
+            createAccount()
         }
     }
 }
